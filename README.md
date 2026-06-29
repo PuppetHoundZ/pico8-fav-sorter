@@ -14,6 +14,11 @@ PICO-8 prepends all newly favorited cartridges to the top of its flat `favourite
 * **BBS Quick Link:** Adds an inline `🔗` button to jump straight to a cart’s web forum thread directly from the GUI.
 * **Atomic Saves & Safety First:** Implements fail-safe atomic writes via file-system replacement and provides real-time single `.bak` generation with an instant restore utility inside the manager.
 * **Touch Friendly UI:** Hand-tailored CSS tailored to the *Solace Dark Theme*, boasting robust 44px min-touch targets perfect for a Raspberry Pi touchscreen setup.
+## 🎮 Also Available for MuOS
+
+If you're sorting PICO-8 favourites on a **MuOS handheld device** (e.g. Anbernic), check out the companion project:
+
+👉 [MuOS-Pico8-Favs-Sorter](https://github.com/PuppetHoundZ/MuOS-Pico8-Favs-Sorter) — Native Python favourites sorter for MuOS
 
 ---
 
@@ -70,8 +75,3 @@ PICO-8 reads and writes pipe-delimited strings with space-padded fixed widths co
 
 ---
 
-## 🎮 Also Available for MuOS
-
-If you're sorting PICO-8 favourites on a **MuOS handheld device** (e.g. Anbernic), check out the companion project:
-
-👉 [MuOS-Pico8-Favs-Sorter](https://github.com/PuppetHoundZ/MuOS-Pico8-Favs-Sorter) — Native Python favourites sorter for MuOS
