@@ -67,3 +67,11 @@ The manager cleanly compartmentalizes all assets within standard Linux desktop l
 PICO-8 reads and writes pipe-delimited strings with space-padded fixed widths containing 7 internal fields:
 ```text
 |slug                 |name                 |bbs_id |author           |                    |display_title
+
+---
+
+## 🎮 Also Available for MuOS
+
+If you're sorting PICO-8 favourites on a **MuOS handheld device** (e.g. Anbernic), check out the companion project:
+
+👉 [MuOS-Pico8-Favs-Sorter](https://github.com/PuppetHoundZ/MuOS-Pico8-Favs-Sorter) — Native Python favourites sorter for MuOS
