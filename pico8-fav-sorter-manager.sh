@@ -2,7 +2,7 @@
 # ==============================================================================
 # pico8-fav-sorter-manager.sh
 # PICO-8 Favourites Sorter — Manager Script
-# Version: 2.0.2
+# Version: 2.0.4
 # Status: 🟡 Untested
 # Last updated: 2026-06-26
 #
@@ -145,7 +145,7 @@
 # ── ENVIRONMENT ──────────────────────────────────────────────────────────────
 #   Raspberry Pi 4, Pi OS Trixie (Debian 13 arm64), labwc Wayland compositor.
 #   800×480 touchscreen (primary) + 1080p HDMI (secondary, not always connected).
-#   GTK3 window: set_default_size(800, 460), set_size_request(780, 360).
+#   GTK3 window: set_default_size(796, 460), set_size_request(776, 360).
 #   Centre column wrapped in ScrolledWindow so action buttons scroll at 400px height.
 #   PipeWire audio — this script does NOT touch audio, PipeWire, or services.
 #   Everything runs in user space. No autostart. No systemd units.
@@ -226,6 +226,19 @@
 #   Dependencies (python3-gi etc.) are kept — shared with other tools.
 #
 # ── VERSION HISTORY ──────────────────────────────────────────────────────────
+#   v2.0.4 (2026-06-26) — Fix: _on_delete_category now cleans _cat_sort_state
+#                          (was leaking stale keys indefinitely). Fix: removed
+#                          unused cache_for_pool variable in _rebuild_cards
+#                          inside _on_suggest_categories (dead code, replaced
+#                          by existing inline dict expression already in use).
+#   v2.0.3 (2026-06-26) — Touch target sweep: all 36px buttons → 44px (left
+#                          panel toggles, popover stepper Up/Down, auto-sort
+#                          fetch btn, suggest-cat scope toggles + fetch btn +
+#                          name entry). Add/Rename category entry_widget →
+#                          44px. Move-to dialog label rows margin 6→12px
+#                          (~31px→~43px effective). All dialogs 460→420px tall
+#                          so action buttons always visible on 480px screen.
+#                          Main window 800→796px wide (labwc border clearance).
 #   v2.0.2 (2026-06-26) — Suggest Categories wired into AUTO section of popover
 #                          ("✨ Suggest Categories…"). Infrastructure (TAG_TO_NEW_
 #                          CAT, KEYWORD_TO_NEW_CAT, suggest_new_categories,
@@ -1157,8 +1170,8 @@ def auto_suggest_category(entry, categories):
 class FavSorterWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="PICO-8 Favourites Sorter")
-        self.set_default_size(800, 460)
-        self.set_size_request(780, 360)
+        self.set_default_size(796, 460)
+        self.set_size_request(776, 360)
         self.set_resizable(True)
         self.connect("delete-event", self._on_delete_event)
 
@@ -1267,12 +1280,12 @@ class FavSorterWindow(Gtk.Window):
         tog_box.set_margin_top(8); tog_box.set_margin_start(8); tog_box.set_margin_end(8)
         self._tog_unsorted_btn = Gtk.Button(label="NEW / UNSORTED (0)")
         self._tog_unsorted_btn.get_style_context().add_class("btn-cat-active")
-        self._tog_unsorted_btn.set_size_request(0, 36)
+        self._tog_unsorted_btn.set_size_request(0, 44)
         self._tog_unsorted_btn.connect("clicked", self._on_toggle_browse, False)
         tog_box.pack_start(self._tog_unsorted_btn, True, True, 0)
         self._tog_all_btn = Gtk.Button(label="ALL ENTRIES")
         self._tog_all_btn.get_style_context().add_class("btn-cat")
-        self._tog_all_btn.set_size_request(0, 36)
+        self._tog_all_btn.set_size_request(0, 44)
         self._tog_all_btn.connect("clicked", self._on_toggle_browse, True)
         tog_box.pack_start(self._tog_all_btn, True, True, 0)
         left_wrap.pack_start(tog_box, False, False, 0)
@@ -1356,7 +1369,7 @@ class FavSorterWindow(Gtk.Window):
         def _pop_btn(label, cb, css="btn-secondary"):
             b = Gtk.Button(label=label)
             b.get_style_context().add_class(css)
-            b.set_size_request(0, 36)
+            b.set_size_request(0, 44)
             b.set_margin_start(2); b.set_margin_end(2)
             def _on_clicked(widget, _cb=cb):
                 pop.popdown()
@@ -1394,7 +1407,7 @@ class FavSorterWindow(Gtk.Window):
 
         _btn_cat_up = Gtk.Button(label="\u2b06 Up")
         _btn_cat_up.get_style_context().add_class("btn-secondary")
-        _btn_cat_up.set_size_request(0, 36)
+        _btn_cat_up.set_size_request(0, 44)
 
         _stepper_lbl = Gtk.Label(xalign=0.5)
         _stepper_lbl.get_style_context().add_class("header-sub")
@@ -1403,7 +1416,7 @@ class FavSorterWindow(Gtk.Window):
 
         _btn_cat_dn = Gtk.Button(label="\u2b07 Down")
         _btn_cat_dn.get_style_context().add_class("btn-secondary")
-        _btn_cat_dn.set_size_request(0, 36)
+        _btn_cat_dn.set_size_request(0, 44)
 
         stepper_box.pack_start(_btn_cat_up,    False, False, 0)
         stepper_box.pack_start(_stepper_lbl,   False, False, 0)
@@ -2068,8 +2081,8 @@ class FavSorterWindow(Gtk.Window):
         lbl = Gtk.Label(label="Category name:", xalign=0)
         box.pack_start(lbl, False, False, 4)
         entry_widget = Gtk.Entry()
-        entry_widget.connect("activate",
-            lambda *_: dlg.response(Gtk.ResponseType.OK))
+        entry_widget.set_size_request(0, 44)
+        entry_widget.connect("activate",            lambda *_: dlg.response(Gtk.ResponseType.OK))
         box.pack_start(entry_widget, False, False, 4)
         dlg.show_all()
         resp = dlg.run()
@@ -2102,6 +2115,7 @@ class FavSorterWindow(Gtk.Window):
         lbl = Gtk.Label(label=f"Rename '{old_name}' to:", xalign=0)
         box.pack_start(lbl, False, False, 4)
         entry_widget = Gtk.Entry()
+        entry_widget.set_size_request(0, 44)
         entry_widget.set_text(old_name)
         entry_widget.select_region(0, -1)
         entry_widget.connect("activate",
@@ -2168,6 +2182,7 @@ class FavSorterWindow(Gtk.Window):
 
         # Remove category from state
         self._sections.pop(cat, None)
+        self._cat_sort_state.pop(cat, None)
         if cat in self._categories:
             self._categories.remove(cat)
 
@@ -2316,7 +2331,7 @@ class FavSorterWindow(Gtk.Window):
             count = len(self._sections.get(cat, []))
             lbl_row = Gtk.Label(
                 label=f"{cat}  ({count})", xalign=0)
-            lbl_row.set_margin_top(6); lbl_row.set_margin_bottom(6)
+            lbl_row.set_margin_top(12); lbl_row.set_margin_bottom(12)
             lbl_row.set_margin_start(8)
             row.add(lbl_row)
             lb.add(row)
@@ -2380,7 +2395,7 @@ class FavSorterWindow(Gtk.Window):
         dlg = Gtk.Dialog(title="Auto-Sort Suggestions",
                          transient_for=self,
                          flags=Gtk.DialogFlags.MODAL)
-        dlg.set_default_size(560, 460)
+        dlg.set_default_size(560, 420)
 
         # Header bar with fetch button
         hbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -2395,7 +2410,7 @@ class FavSorterWindow(Gtk.Window):
 
         fetch_btn = Gtk.Button(label="\U0001f310 Fetch BBS Tags")
         fetch_btn.get_style_context().add_class("btn-primary")
-        fetch_btn.set_size_request(0, 36)
+        fetch_btn.set_size_request(0, 44)
         hbar.pack_start(fetch_btn, False, False, 0)
 
         dlg.get_content_area().pack_start(hbar, False, False, 0)
@@ -2634,7 +2649,7 @@ class FavSorterWindow(Gtk.Window):
         dlg = Gtk.Dialog(title="Suggest New Categories",
                          transient_for=self,
                          flags=Gtk.DialogFlags.MODAL)
-        dlg.set_default_size(560, 460)
+        dlg.set_default_size(560, 420)
         dlg.add_button("Create Checked", Gtk.ResponseType.OK)
         dlg.add_button("Cancel",         Gtk.ResponseType.CANCEL)
 
@@ -2651,17 +2666,17 @@ class FavSorterWindow(Gtk.Window):
 
         btn_unsorted = Gtk.Button(label="Unsorted Only")
         btn_unsorted.get_style_context().add_class("btn-cat-active")
-        btn_unsorted.set_size_request(0, 36)
+        btn_unsorted.set_size_request(0, 44)
         top_bar.pack_start(btn_unsorted, False, False, 0)
 
         btn_all = Gtk.Button(label="All Entries")
         btn_all.get_style_context().add_class("btn-cat")
-        btn_all.set_size_request(0, 36)
+        btn_all.set_size_request(0, 44)
         top_bar.pack_start(btn_all, False, False, 0)
 
         fetch_btn = Gtk.Button(label="\U0001f310 Fetch BBS Tags")
         fetch_btn.get_style_context().add_class("btn-primary")
-        fetch_btn.set_size_request(0, 36)
+        fetch_btn.set_size_request(0, 44)
         top_bar.pack_end(fetch_btn, False, False, 0)
 
         box.pack_start(top_bar, False, False, 0)
@@ -2722,11 +2737,6 @@ class FavSorterWindow(Gtk.Window):
             kw_sugs = suggest_new_categories(pool, self._categories)
 
             # BBS tag suggestions (from cache, if fetch was run)
-            cache_for_pool = {
-                id(e): (e, tags)
-                for eid, (e, tags) in _tag_cache.items()
-                if any(id(pe) == eid for pe in pool)
-            }
             bbs_sugs = suggest_new_categories_from_tags(
                 {eid: v for eid, v in _tag_cache.items()
                  if any(id(pe) == eid for pe in pool)},
@@ -2775,7 +2785,7 @@ class FavSorterWindow(Gtk.Window):
 
                 name_entry = Gtk.Entry()
                 name_entry.set_text(proposed_cat)
-                name_entry.set_size_request(0, 36)
+                name_entry.set_size_request(0, 44)
                 name_entry.get_style_context().add_class("btn-secondary")
                 row1.pack_start(name_entry, True, True, 0)
 
