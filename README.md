@@ -1,77 +1,78 @@
-# PICO-8 Favourites Sorter — Manager Script
+# PICO-8 Favourites Sorter
 
-An elegant, robust terminal manager that automatically generates and manages a self-contained **GTK3 Python GUI Application** (`pico8-fav-sorter`) to sort, categorize, and organize your PICO-8 Splore favorites. Designed for Raspberry Pi OS.
+A single-file bash installer for a GTK3 GUI that organizes PICO-8's `favourites.txt` on Linux (built and tested on Raspberry Pi OS Trixie, labwc/Wayland).
 
-PICO-8 prepends all newly favorited cartridges to the top of its flat `favourites.txt` file. This utility allows you to map those unsorted games into clear, collapsible, human-readable comment headers (`#`) while remaining perfectly invisible to PICO-8.
+**Status:** 🟢 GOLD — v2.1.1 (confirmed on real hardware, 2026-06-30)
 
----
+## The problem
 
-## 🛠️ Features
+Every time you favourite a cart in Splore, PICO-8 prepends a new line to the *top* of `favourites.txt`. It never sorts, groups, or sections the file — it just grows as an unsorted stack. This tool gives you a touch-friendly GUI to sort that stack into labelled categories, without ever touching PICO-8 itself.
 
-* **Zero External Assets:** The single script generates everything it needs—the Python GUI application, an SVG launcher icon, and the desktop integration shortcut.
-* **Intelligent Auto-Sorting:** Maps entries into categories using local title/author keyword rules.
-* **BBS Tag Enrichment:** Queries the official Lexaloffle BBS via a background thread pull to look up missing user tags and automatically classify ambiguous carts.
-* **BBS Quick Link:** Adds an inline `🔗` button to jump straight to a cart’s web forum thread directly from the GUI.
-* **Atomic Saves & Safety First:** Implements fail-safe atomic writes via file-system replacement and provides real-time single `.bak` generation with an instant restore utility inside the manager.
-* **Touch Friendly UI:** Hand-tailored CSS tailored to the *Solace Dark Theme*, boasting robust 44px min-touch targets perfect for a Raspberry Pi touchscreen setup.
-## 🎮 Also Available for MuOS
+## Features
 
-If you're sorting PICO-8 favourites on a **MuOS handheld device** (e.g. Anbernic), check out the companion project:
+- **Unsorted / All Entries views** — see newly favourited carts, or browse everything sortable by name, author, or category, with a live filter
+- **Category management** — add, rename, reorder, and delete categories; move entries between them with a click
+- **Auto-Sort** — instant keyword-based category suggestions (no network needed), with an optional BBS tag fetch to fill in the gaps. Shows a clear hint if nothing matches by keyword alone
+- **Suggest New Categories** — scans your unsorted/all entries for themes (horror, sports, rhythm, tower defence, and more) or recurring authors ("`<AUTHOR>` COLLECTION") and proposes brand-new categories once enough entries cluster around a theme
+- **Duplicate detection** — finds both exact-revision duplicates (same cart, different `-N` suffix, sorted newest-first) and fuzzy author+title matches (re-uploaded carts with a new BBS ID), with a per-group Keep/Remove resolver
+- **Master category backup** (`favourites.txt.master.json`) — remembers every category assignment outside the file itself, so your organization survives PICO-8 (or a stray edit) stripping the `#` category headers. Export/Import lets you carry your categorization to another device
+- **Reload / Discard Changes** — re-read the file from disk if you want to bail on unsaved edits
+- **BBS link opener** — jump straight to a cart's Lexaloffle BBS page from its row
+- Preserves every line of `favourites.txt` byte-for-byte — this tool never reformats or reparses PICO-8's own data, only adds `#` comment headers PICO-8 already ignores
+- Single `.bak` backup written before every save, with a restore option in the terminal menu
 
-👉 [MuOS-Pico8-Favs-Sorter](https://github.com/PuppetHoundZ/MuOS-Pico8-Favs-Sorter) — Native Python favourites sorter for MuOS
+## Requirements
 
----
+- Linux with GTK3 (`python3-gi`, `gir1.2-gtk-3.0` — the installer checks and installs these via `apt` if missing)
+- Python 3
+- Built and tested on Raspberry Pi 4, Pi OS Trixie (Debian 13 arm64), labwc Wayland compositor, 800×480 touchscreen
 
-## 📋 Requirements
+## Install
 
-* **OS:** Linux / Raspberry Pi OS (Tested on *Pi OS Trixie / Debian 13 arm64*).
-* **Environment:** Wayland (labwc) or X11 environment.
-* **Screen Resolution:** Optimized to look crisp at low-profile resolutions (e.g., 800×480 touchscreen displays) up to 1080p desktop layouts.
+```bash
+chmod +x pico8-fav-sorter-manager.sh
+./pico8-fav-sorter-manager.sh
+```
 
-The terminal script automatically checks and installs any missing system dependencies (`python3-gi`, `python3-gi-cairo`, `gir1.2-gtk-3.0`).
+Run as your normal user — **do not run as root**. The menu walks you through Install/Repair, Uninstall, and restoring from backup.
 
----
+This installs:
 
-## 🚀 Installation & Usage
+| File | Purpose |
+|---|---|
+| `~/.local/bin/pico8-fav-sorter` | GTK3 GUI |
+| `~/.local/share/applications/pico8-fav-sorter.desktop` | App-menu shortcut |
+| `~/.local/share/icons/hicolor/scalable/apps/pico8-fav-sorter.svg` | Icon |
+| `~/.local/share/pico8-fav-sorter-manager/` | Rollback/crash-recovery state |
 
-1.  Download or copy the manager script to your system.
-2.  Make the script executable:
-    ```bash
-    chmod +x pico8-fav-sorter-manager.sh
-    ```
-3.  Execute the script as your **normal system user** (do *NOT* run with `sudo` or as `root`):
-    ```bash
-    ./pico8-fav-sorter-manager.sh
-    ```
+## Usage
 
-### Terminal Menu Options
-Upon execution, you will be greeted by an interactive menu panel allowing you to:
-1.  **Install/Repair GUI Application** (Deploys code hooks, generates scalable SVGs, installs shortcuts)
-2.  **Launch GUI Application** (Runs the interface from user space)
-3.  **Uninstall Application** (Cleans binaries, shortcuts, and icons safely; keeps shared dependencies intact)
-4.  **Restore safe copies** (Loads immediate state files or manual backups if a recovery point is requested)
+1. Launch from your app menu, or run `~/.local/bin/pico8-fav-sorter` directly
+2. Click **Open Default** to load `~/.lexaloffle/pico-8/favourites.txt`, or **Open File** to pick another location
+3. Select an entry in the left panel, then tap a category button (or use the ⚙ Actions menu) to move it
+4. **Save File** writes your changes back — a single `.bak` is kept alongside the original
 
----
+## Uninstall
 
-## 📂 Key Path Architecture
+Run the script again and choose **Uninstall** from the menu. This removes only the files this tool created (GUI script, desktop shortcut, icon, state directory). Shared system packages (`python3-gi`, etc.) are left in place, since other tools may depend on them.
 
-The manager cleanly compartmentalizes all assets within standard Linux desktop locations:
+## File format notes
 
-| Asset Type | File Path Location |
-| :--- | :--- |
-| **GTK3 Python App** | `~/.local/bin/pico8-fav-sorter` |
-| **Desktop Launcher** | `~/.local/share/applications/pico8-fav-sorter.desktop` |
-| **Scalable Vector Icon** | `~/.local/share/icons/hicolor/scalable/apps/pico8-fav-sorter.svg` |
-| **Rollback State Dir** | `~/.local/share/pico8-fav-sorter-manager/` |
-| **Default Data File** | `~/.lexaloffle/pico-8/favourites.txt` |
+`favourites.txt` is a pipe-delimited, fixed-width file. This tool never reparses a line back into columns — every entry is stored and rewritten verbatim. Category sections are added as plain `#` comment blocks, which PICO-8 treats as comments and ignores completely:
 
----
+```
+# ============================================================
+# CATEGORY NAME
+# ============================================================
+|slug|name|bbs_id|author|             |Display Title
+```
 
-## 🧱 The Favourites.txt Format
+Anything above the first `# ===` divider is treated as unsorted (i.e. recently favourited, not yet sorted).
 
-PICO-8 reads and writes pipe-delimited strings with space-padded fixed widths containing 7 internal fields:
-```text
-|slug                 |name                 |bbs_id |author           |                    |display_title
+## Credits
 
----
+Category/keyword-sorting logic and the duplicate-detection + master-list-recovery design were adapted from [PuppetHoundZ/MuOS-Pico8-Favs-Sorter](https://github.com/PuppetHoundZ/MuOS-Pico8-Favs-Sorter) (a native SDL2 build of the same idea for muOS handhelds) and reimplemented for GTK3/Linux — the rendering and input layers are unrelated, only the sorting/recovery logic transferred.
 
+## License
+
+Add your preferred license here.
