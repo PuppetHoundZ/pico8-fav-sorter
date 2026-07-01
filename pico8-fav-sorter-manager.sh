@@ -2,9 +2,9 @@
 # ==============================================================================
 # pico8-fav-sorter-manager.sh
 # PICO-8 Favourites Sorter — Manager Script
-# Version: 2.0.4
-# Status: 🟡 Untested
-# Last updated: 2026-06-26
+# Version: 2.1.1
+# Status: 🟢 GOLD (confirmed 2026-06-30)
+# Last updated: 2026-06-30
 #
 # Self-contained — generates all required files on Install:
 #   • pico8-fav-sorter  (GTK3 Python GUI)   → ~/.local/bin/pico8-fav-sorter
@@ -44,6 +44,9 @@
 #   ~/.local/share/applications/pico8-fav-sorter.desktop    — desktop shortcut
 #   ~/.local/share/icons/hicolor/scalable/apps/pico8-fav-sorter.svg — icon
 #   ~/.local/share/pico8-fav-sorter-manager/                — rollback state dir
+#   <favourites.txt>.master.json  — persistent slug→category map (v2.1.0+),
+#                                    lives next to whichever file is open;
+#                                    survives PICO-8 stripping # headers.
 #
 # ── FAVOURITES.TXT FORMAT ────────────────────────────────────────────────────
 #   Location: ~/.lexaloffle/pico-8/favourites.txt (Linux/Pi OS default)
@@ -226,129 +229,89 @@
 #   Dependencies (python3-gi etc.) are kept — shared with other tools.
 #
 # ── VERSION HISTORY ──────────────────────────────────────────────────────────
-#   v2.0.4 (2026-06-26) — Fix: _on_delete_category now cleans _cat_sort_state
-#                          (was leaking stale keys indefinitely). Fix: removed
-#                          unused cache_for_pool variable in _rebuild_cards
-#                          inside _on_suggest_categories (dead code, replaced
-#                          by existing inline dict expression already in use).
-#   v2.0.3 (2026-06-26) — Touch target sweep: all 36px buttons → 44px (left
-#                          panel toggles, popover stepper Up/Down, auto-sort
-#                          fetch btn, suggest-cat scope toggles + fetch btn +
-#                          name entry). Add/Rename category entry_widget →
-#                          44px. Move-to dialog label rows margin 6→12px
-#                          (~31px→~43px effective). All dialogs 460→420px tall
-#                          so action buttons always visible on 480px screen.
-#                          Main window 800→796px wide (labwc border clearance).
-#   v2.0.2 (2026-06-26) — Suggest Categories wired into AUTO section of popover
-#                          ("✨ Suggest Categories…"). Infrastructure (TAG_TO_NEW_
-#                          CAT, KEYWORD_TO_NEW_CAT, suggest_new_categories,
-#                          suggest_new_categories_from_tags, _on_suggest_
-#                          categories) was already present — only the popover
-#                          button connection was missing.
-#   v2.0.1 (2026-06-26) — BBS button: "🔗 BBS" → "🔗" icon only, 44x44 fixed
-#                          square (frees title space on small screen). Move-to
-#                          dialog scroll width 340 → 480px. Auto-sort dialog
-#                          height 480 → 460px so Apply/Cancel always visible.
-#   v2.0.0 (2026-06-26) — Fix: _on_add_category showed "Category added" even
-#                          when name already existed — now shows "already exists"
-#                          warning and skips rebuild/dirty. Fix: _on_rename_
-#                          category now migrates _cat_sort_state to new name so
-#                          sort memory isn't lost. Fix: _on_delete_category now
-#                          sorts displaced entries by author A→Z before prepending
-#                          to Unsorted, so they land in consistent order.
-#                          Confirmation dialog updated to mention author sort.
-#   v1.9.9 (2026-06-26) — Fix: empty categories silently dropped on save.
-#                          write_favourites skipped the # === header when a
-#                          category had 0 entries, losing it from the file.
-#                          Header now always written; entry lines conditional.
-#                          Fix: watchdog timeout total*10+10 → total*2+10
-#                          (50 carts: 510s → 110s; actual fetch ~4s).
-#   v1.9.8 (2026-06-26) — Cat Up/Down replaced with inline stepper: Up button,
-#                          category name + position (n/total), Down button —
-#                          stays open on every tap. Rebuilds category list and
-#                          refreshes label live. Up greys at top, Down greys at
-#                          bottom. Whole stepper greys when no cat selected.
-#   v1.9.7 (2026-06-26) — Fix: Cat Up/Down/Rename/Delete were silently doing
-#                          nothing when no category had been clicked first.
-#                          Popover now connects to "show" signal: refreshes an
-#                          active-category label at the top and greys out the
-#                          four cat-specific buttons when _sel_cat is None.
-#                          Users see "No category selected" and can't click the
-#                          greyed buttons, making the required workflow clear.
-#   v1.9.6 (2026-06-26) — Popover size capped: pop_box wrapped in ScrolledWindow
-#                          (190x380px, vertical scroll only); button size_request
-#                          width removed (was forcing 160px). Popover stays
-#                          compact and scrolls if content overflows.
-#   v1.9.5 (2026-06-26) — BBS fetch hardening: future.result() wrapped in
-#                          try/except (worker never crashes); _on_result and
-#                          _on_fetch_done wrapped in try/except (GTK idle
-#                          callbacks never raise). Watchdog GLib.timeout_add_
-#                          seconds fires if thread goes silent — re-enables
-#                          fetch button and hides progress bar so user is never
-#                          permanently stuck. Timeout = max(30, n*10+10)s.
-#   v1.9.4 (2026-06-26) — BBS tag fetch: "Fetch BBS Tags" button in auto-sort
-#                          dialog. ThreadPoolExecutor(max_workers=3) in daemon
-#                          thread fetches <span class="tag"> from each cart's
-#                          BBS page. TAG_TO_CAT maps ~60 BBS tags to categories.
-#                          GLib.idle_add for all GTK updates — UI never blocks.
-#                          Progress bar live per result. BBS overrides keyword;
-#                          source badge [BBS] vs [kw]. URL allowlist guard added
-#                          to _open_bbs (rejects non-lexaloffle.com URLs).
-#   v1.9.3 (2026-06-26) — BBS link opener: "🔗 BBS" button on every entry row
-#                          opens Lexaloffle BBS via xdg-open. URL built from
-#                          entry["base"] (parts[2]) per reference doc rules.
-#                          Auto-sort: AUTO_SORT_RULES keyword map + suggestion
-#                          badge on unsorted rows (yellow → category). Actions
-#                          popover added (replaces cramped centre column buttons)
-#                          with AUTO section containing Auto-Sort Unsorted button.
-#   v1.9.2 (2026-06-25) — 800x400 support: default_size(800,460),
-#                          size_request(780,360); centre column wrapped in
-#                          ScrolledWindow so action buttons reachable at short heights.
-#   v1.9.1 (2026-06-25) — Bug fixes: atomic file save via os.replace() prevents
-#                          data loss on power cut; _check_dirty aborts open if
-#                          save fails; Save & Quit keeps window open on save error.
-#   v1.9.0 (2026-06-25) — Centre column compacted: section headers (CATEGORY /
-#                          ENTRY / SORT) let buttons use icon+short text; paired
-#                          rows (Add|Rename, CatUp|CatDown, MoveUp|MoveDown,
-#                          Favs|Unsort); sort row 3-across (Title|Author|A+T).
-#                          All buttons use inner Gtk.Label with ellipsize so
-#                          text never overflows at any window size. Sort button
-#                          label update uses get_child() to reach inner label.
-#                          QUICK section removed (Add to Favs folded into ENTRY).
-#   v1.8.0 (2026-06-25) — "Move to..." promoted into ENTRY section (was at
-#                          bottom of QUICK); button labels use Python \uXXXX
-#                          escapes for Unicode safety in heredoc context.
-#   v1.7.0 (2026-06-25) — Esc key deselects current entry without moving it
-#                          (_on_key_press on window; returns False to propagate).
-#                          UNSORTED filtered from _categories merge in _load_file
-#                          (prevents phantom UNSORTED button in category panel).
-#                          EXIT trap fixed to pass real $? (interrupt now triggers
-#                          rollback correctly). Stale header comments corrected
-#                          to reflect single-.bak behaviour (not timestamped).
-#   v1.6.0 (2026-06-25) — Terminal menu: Restore favourites.txt from .bak
-#                          (option 4); saves pre-restore safety copy first.
-#                          Right panel count always accurate (entry/entries).
-#                          Empty-state hint when category has 0 entries.
-#                          Scroll-to-selected in ALL ENTRIES after move
-#                          (_last_acted_slug tracked, idle_add scroll).
-#                          NEW badge (teal) on entries that were unsorted at
-#                          file open (_new_slugs set; shown in both panels).
-#   v1.5.0 (2026-06-25) — 3 toggleable sort buttons, duplicate detection,
-#                          UNSORTED badge count, Add to Favs, Move to...
-#   v1.4.0 (2026-06-25) — Open Default, auto-reopen, config.json, dirty
-#                          tracking, total count, single .bak, Rename Cat.
-#   v1.3.0 (2026-06-25) — Delete Game, Cat Up/Down, split centre column.
-#   v1.2.0 (2026-06-25) — id()-based dedup, unsorted raw at top, To Unsorted,
-#                          Delete Category.
-#   v1.1.0 (2026-06-24) — ALL ENTRIES toggle, CURRENT FAVORITES category.
-#   v1.0.0 (2026-06-24) — Initial release.
+#   v2.1.1 (2026-06-30) — Auto-Sort empty-state hint: when keyword matching
+#                          finds zero suggestions (self._categories has no
+#                          AUTO_SORT_RULES keyword hits for the current pool),
+#                          the list now shows an inline hint row ("Couldn't
+#                          figure it out from keywords — try Fetch BBS Tags")
+#                          instead of silently showing "0 suggestions" in
+#                          small header text only. GTK3 has no built-in toast
+#                          widget, so this is an in-list row — same pattern
+#                          already used for Suggest Categories' empty state.
+#                          Disappears automatically once any BBS match or
+#                          keyword match populates suggestions_map.
+#   v2.1.0 (2026-06-30) — Part 7: ported logic from PuppetHoundZ/MuOS-Pico8-
+#                          Favs-Sorter main.py (v1.7.12), adapted to GTK3/Pi:
+#                          (1) Duplicate detection: find_duplicate_groups()
+#                          groups by base-slug + fuzzy author/title match;
+#                          "Find Duplicates…" popover action opens a per-group
+#                          resolve dialog (Keep Newest/Keep Both). Separate
+#                          from the existing exact-slug auto-dedup at file open.
+#                          BUG CAUGHT IN SELF-TEST before ship: groups were
+#                          returned in arbitrary dict-insertion order, so
+#                          "Keep Latest" actually kept whichever entry was
+#                          scanned first — could delete the newer revision.
+#                          Fixed by tagging each group "revision" (same base
+#                          slug, sorted newest -N first — a real signal) vs
+#                          "fuzzy" (author+title match, different carts, no
+#                          revision order — button relabelled "Keep First"
+#                          with an on-screen caveat). Verified with 5 unit
+#                          tests incl. scrambled input order and the blank-
+#                          base false-positive guard (see KEYWORD note below).
+#                          (2) Author-collection suggestions:
+#                          suggest_author_categories() proposes "<AUTHOR>
+#                          COLLECTION" for authors with >= MIN_SUGGEST works,
+#                          merged into the existing Suggest Categories dialog
+#                          as lowest-priority (keyword/BBS suggestions win).
+#                          (3) Master category JSON (favourites.txt.master.
+#                          json): persists slug→category on every assign/
+#                          rename/delete, resynced fully on Save. On file
+#                          load, reconcile_stripped_categories() recovers
+#                          entries sitting in Unsorted whose last-known
+#                          category still exists — protects against PICO-8
+#                          or a manual edit dropping # headers. Deleting a
+#                          category marks its slugs UNSORTED in master
+#                          (excluded from recovery, history kept) so a
+#                          delete can't be silently undone by reconcile.
+#                          Export/Import Master List popover actions for
+#                          carrying assignments to another device.
+#                          (4) "Reload (Discard Changes)" popover action:
+#                          re-parses from disk via the same _load_file() path
+#                          (so it also re-runs the reconcile step), resetting
+#                          _categories to DEFAULT_CATEGORIES first so an
+#                          unsaved Add Category can't survive the reload.
+#                          (5) Dormant AUTO_SORT_RULES entries added for
+#                          HORROR/SPORTS/CARD & BOARD GAMES/TOWER DEFENCE/
+#                          SIMULATION/MULTIPLAYER/IDLE & CLICKER/RHYTHM/
+#                          METROIDVANIA — inert until the matching category
+#                          is actually created via Suggest Categories (the
+#                          existing "cat_name not in categories: skip" guard
+#                          already handles this), kept in sync with
+#                          TAG_TO_NEW_CAT/KEYWORD_TO_NEW_CAT. Existing
+#                          DEFAULT_CATEGORIES (10) and file-format handling
+#                          left untouched — not part of the muOS source,
+#                          which targets a different device entirely.
+#   v2.0.0–v2.0.4 (2026-06-26) — Actions popover redesign (replaced cramped
+#                          centre-column buttons): category stepper, Suggest
+#                          Categories wiring, BBS icon-only button, touch-
+#                          target sweep to 44px, category-rename/delete
+#                          correctness fixes (sort-state migration, author
+#                          A→Z ordering on delete, stale-state cleanup).
+#   v1.9.0–v1.9.9 (2026-06-25/26) — BBS tag fetch + link opener, auto-sort
+#                          keyword engine, atomic save (os.replace), 800x480
+#                          layout fit, empty-category save bug fix, watchdog
+#                          timeout tuning.
+#   v1.0.0–v1.8.0 (2026-06-24/25) — Initial release through core workflow:
+#                          parse/write favourites.txt, category CRUD, entry
+#                          move/reorder/sort, duplicate detection at load,
+#                          Open Default/config persistence, restore-from-.bak.
 #
 # ==============================================================================
 
 set -Eeuo pipefail
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-SCRIPT_VERSION="1.9.2"
+SCRIPT_VERSION="2.1.1"
 
 GUI_SCRIPT="${HOME}/.local/bin/pico8-fav-sorter"
 GUI_ICON_DIR="${HOME}/.local/share/icons/hicolor/scalable/apps"
@@ -1017,6 +980,11 @@ TAG_TO_NEW_CAT = {
     "idle":             "IDLE & CLICKER",
     "clicker":          "IDLE & CLICKER",
     "incremental":      "IDLE & CLICKER",
+    # Rhythm
+    "rhythm":           "RHYTHM",
+    "dance":            "RHYTHM",
+    # Metroidvania
+    "metroidvania":     "METROIDVANIA",
 }
 
 # Keyword fragments matched against entry titles (lower) → proposed category.
@@ -1044,6 +1012,9 @@ KEYWORD_TO_NEW_CAT = {
     "simul":     "SIMULATION",
     "tycoon":    "SIMULATION",
     "manage":    "SIMULATION",
+    "rhythm":    "RHYTHM",
+    "groove":    "RHYTHM",
+    "metroidvania": "METROIDVANIA",
 }
 
 MIN_SUGGEST = 3  # minimum entries sharing a theme before suggesting a new category
@@ -1146,6 +1117,50 @@ AUTO_SORT_RULES = [
                     "generator", "test", "demo"],
         "authors": [],
     }),
+    # ── Dormant until the matching category is actually added via Suggest
+    # Categories (auto_suggest_category's "cat_name not in categories: skip"
+    # guard makes these inert otherwise). Kept in sync with TAG_TO_NEW_CAT /
+    # KEYWORD_TO_NEW_CAT above.
+    ("HORROR", {
+        "titles":  ["horror", "scary", "fear", "creepy", "nightmare",
+                    "haunt", "ghost", "zombie", "slasher", "dread"],
+        "authors": [],
+    }),
+    ("SPORTS", {
+        "titles":  ["sport", "soccer", "football", "basket", "baseball",
+                    "bowling", "hockey", "tennis", "golf", "pinball"],
+        "authors": [],
+    }),
+    ("CARD & BOARD GAMES", {
+        "titles":  ["card", "poker", "solitaire", "chess", "checkers",
+                     "board", "dice", "tabletop", "deck"],
+        "authors": [],
+    }),
+    ("TOWER DEFENCE", {
+        "titles":  ["tower defense", "tower defence", "tower def"],
+        "authors": [],
+    }),
+    ("SIMULATION", {
+        "titles":  ["tycoon", "theme", "city", "manage", "farm",
+                    "delivery", "trade", "mining", "factory", "colony"],
+        "authors": [],
+    }),
+    ("MULTIPLAYER", {
+        "titles":  ["multiplayer", "co-op", "2 player", "2-player"],
+        "authors": [],
+    }),
+    ("IDLE & CLICKER", {
+        "titles":  ["idle", "clicker", "incremental", "afk", "autoclick"],
+        "authors": [],
+    }),
+    ("RHYTHM", {
+        "titles":  ["rhythm", "dance", "groove", "metronome", "disco"],
+        "authors": [],
+    }),
+    ("METROIDVANIA", {
+        "titles":  ["metroidvania", "vania"],
+        "authors": [],
+    }),
 ]
 
 def auto_suggest_category(entry, categories):
@@ -1165,6 +1180,160 @@ def auto_suggest_category(entry, categories):
             if kw in author:
                 return cat_name
     return None
+
+def suggest_author_categories(entries, existing_categories):
+    """Cluster entries by author, proposing '<AUTHOR> COLLECTION' for any
+    author with >= MIN_SUGGEST works not already covered by an existing
+    category of that name. Skips authors that already have a matching
+    "<NAME> COLLECTION" category (e.g. MOT COLLECTION)."""
+    from collections import defaultdict
+    buckets = defaultdict(list)
+    existing_upper = {c.upper() for c in existing_categories}
+    for e in entries:
+        author = e["author"].strip()
+        if not author:
+            continue
+        proposed = f"{author.upper()} COLLECTION"
+        if proposed in existing_upper:
+            continue
+        buckets[proposed].append(e)
+    return {cat: ents for cat, ents in buckets.items() if len(ents) >= MIN_SUGGEST}
+
+# ── Duplicate detection ───────────────────────────────────────────────────────
+_SLUG_REV_RE = re.compile(r"^(.*)-(\d+)$")
+
+def _dup_sort_key(e):
+    """Best-effort revision ordering: slugs with a numeric -N suffix are
+    later re-exports of the same base cart, higher N = newer. Unsuffixed
+    slugs sort as revision -1 (the original)."""
+    m = _SLUG_REV_RE.match(e["slug"])
+    if m:
+        return (m.group(1), int(m.group(2)))
+    return (e["slug"], -1)
+
+def find_duplicate_groups(all_entries):
+    """Group entries that look like duplicates/revisions of each other.
+      1. Exact base-slug match (same cart, different -N revision suffix) —
+         a true "revision" group: slug -N ordering gives a real newest-wins
+         signal, so entries are sorted newest-first.
+      2. Fuzzy author+title match (same author, same title, different slug —
+         catches a re-favourited/re-uploaded cart with a brand new BBS id).
+         There's no reliable "newest" signal here (different carts entirely,
+         no timestamp in favourites.txt) — order is deterministic but NOT
+         a recency guarantee.
+    Returns a list of dicts: {"entries": [...], "kind": "revision"|"fuzzy"}.
+    Uses `e.get("base") or e["slug"]` rather than `.get("base", e["slug"])` —
+    parse_entry always sets "base" (possibly to "" on a malformed column),
+    and dict.get()'s default only triggers when the key is absent, not when
+    it's present-but-falsy, so the naive version silently over-groups.
+    """
+    from collections import defaultdict
+    by_base = defaultdict(list)
+    for e in all_entries:
+        key = e.get("base") or e["slug"]
+        by_base[key].append(e)
+    groups = []
+    grouped_ids = set()
+    for g in by_base.values():
+        if len(g) > 1:
+            g.sort(key=_dup_sort_key, reverse=True)  # newest revision first
+            groups.append({"entries": g, "kind": "revision"})
+            grouped_ids.update(id(e) for e in g)
+
+    by_at = defaultdict(list)
+    for e in all_entries:
+        if id(e) in grouped_ids:
+            continue
+        key = (e["author"].strip().lower(), e["title"].strip().lower())
+        if key[0] and key[1]:
+            by_at[key].append(e)
+    for g in by_at.values():
+        if len(g) > 1:
+            groups.append({"entries": g, "kind": "fuzzy"})
+    return groups
+
+# ── Master category JSON — recovery + portable backup ────────────────────────
+# Persists slug -> last-known category alongside favourites.txt so manual
+# organisation survives PICO-8 (or a manual edit) stripping category headers,
+# and so the assignments can be carried to another device's favourites.txt.
+def master_json_path(filepath):
+    return filepath + ".master.json"
+
+def load_master(filepath):
+    try:
+        with open(master_json_path(filepath), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_master(filepath, master):
+    path = master_json_path(filepath)
+    tmp = path + ".tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(master, f, indent=2, sort_keys=True)
+        os.replace(tmp, path)
+    except Exception:
+        pass
+
+def set_master_category_for_entries(filepath, entries, cat_name):
+    """Immediately persist cat_name for these entries' slugs. Called right
+    after assign/rename/delete so a PICO-8 strip mid-session can't
+    resurrect a just-undone assignment via reconcile_stripped_categories."""
+    if not filepath:
+        return
+    master = load_master(filepath)
+    now = datetime.now().isoformat(timespec="seconds")
+    for e in entries:
+        master[e["slug"]] = {
+            "cat": cat_name, "title": e["title"], "author": e["author"],
+            "base": e["base"], "ts": now,
+        }
+    save_master(filepath, master)
+
+def reconcile_stripped_categories(filepath, sections, unsorted, categories):
+    """Restore entries currently sitting in Unsorted to their last-known
+    category via the master JSON, when that category still exists.
+    Returns (sections, still_unsorted, recovered_count)."""
+    master = load_master(filepath)
+    if not master:
+        return sections, unsorted, 0
+    recovered = 0
+    still_unsorted = []
+    for e in unsorted:
+        rec = master.get(e["slug"])
+        target = rec.get("cat") if rec else None
+        if target and target != "UNSORTED" and target in categories:
+            sections.setdefault(target, []).append(e)
+            recovered += 1
+        else:
+            still_unsorted.append(e)
+    return sections, still_unsorted, recovered
+
+def export_master_list(filepath, dest_path):
+    """Copy the master JSON to dest_path for transfer to another device."""
+    master = load_master(filepath)
+    with open(dest_path, "w", encoding="utf-8") as f:
+        json.dump(master, f, indent=2, sort_keys=True)
+    return len(master)
+
+def import_merge_master_list(filepath, src_path):
+    """Merge an imported master JSON into the current one. Newer timestamp
+    per slug wins on conflict. Returns count of slugs added/updated."""
+    try:
+        with open(src_path, encoding="utf-8") as f:
+            incoming = json.load(f)
+    except Exception as ex:
+        raise ValueError(f"Could not read master list:\n{ex}")
+    current = load_master(filepath)
+    changed = 0
+    for slug, rec in incoming.items():
+        existing = current.get(slug)
+        if not existing or rec.get("ts", "") >= existing.get("ts", ""):
+            current[slug] = rec
+            changed += 1
+    save_master(filepath, current)
+    return changed
 
 # ── Main window ───────────────────────────────────────────────────────────────
 class FavSorterWindow(Gtk.Window):
@@ -1497,6 +1666,16 @@ class FavSorterWindow(Gtk.Window):
         pop_box.pack_start(_pop_header("AUTO"), False, False, 0)
         pop_box.pack_start(_pop_btn("\U0001f916 Auto-Sort Unsorted\u2026", self._on_auto_sort,           "btn-add"), False, False, 0)
         pop_box.pack_start(_pop_btn("\u2728 Suggest Categories\u2026",      self._on_suggest_categories, "btn-add"), False, False, 0)
+        pop_box.pack_start(_pop_btn("\U0001f50e Find Duplicates\u2026",     self._on_find_duplicates,    "btn-secondary"), False, False, 0)
+
+        # ── FILE ─────────────────────────────────────────────────────────────
+        sep_f = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep_f.set_margin_top(6); sep_f.set_margin_bottom(2)
+        pop_box.pack_start(sep_f, False, False, 0)
+        pop_box.pack_start(_pop_header("FILE"), False, False, 0)
+        pop_box.pack_start(_pop_btn("\u21ba Reload (Discard Changes)", self._on_reload, "btn-danger"), False, False, 0)
+        pop_box.pack_start(_pop_btn("\u2b06 Export Master List\u2026", self._on_export_master, "btn-secondary"), False, False, 0)
+        pop_box.pack_start(_pop_btn("\u2b07 Import Master List\u2026", self._on_import_master, "btn-secondary"), False, False, 0)
 
         # ── SORT CATEGORY ─────────────────────────────────────────────────────
         sep_s = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
@@ -1927,6 +2106,7 @@ class FavSorterWindow(Gtk.Window):
 
         # Append to target
         self._sections[target_cat].append(entry)
+        set_master_category_for_entries(self._filepath, [entry], target_cat)
 
         self._last_acted_slug = entry["slug"]
         self._sel_entry      = None
@@ -2138,6 +2318,7 @@ class FavSorterWindow(Gtk.Window):
 
         # Rename the sections dict key
         self._sections[new_name] = self._sections.pop(old_name, [])
+        set_master_category_for_entries(self._filepath, self._sections[new_name], new_name)
 
         # Migrate sort state to new name so sort memory isn't lost
         if old_name in self._cat_sort_state:
@@ -2179,6 +2360,7 @@ class FavSorterWindow(Gtk.Window):
         # happened to be in the category.
         sorted_entries = sorted(entries, key=lambda e: e["author"].lower())
         self._unsorted = sorted_entries + self._unsorted
+        set_master_category_for_entries(self._filepath, sorted_entries, "UNSORTED")
 
         # Remove category from state
         self._sections.pop(cat, None)
@@ -2498,6 +2680,24 @@ class FavSorterWindow(Gtk.Window):
                     row, chk, sub = _make_row(e, cat, source)
                     lb.add(row)
                     row_widgets[eid] = (row, chk, sub)
+
+            if not suggestions_map:
+                hint_row = Gtk.ListBoxRow()
+                hint_row.set_activatable(False)
+                hint_row.set_selectable(False)
+                hint_lbl = Gtk.Label(xalign=0)
+                hint_lbl.set_line_wrap(True)
+                hint_lbl.set_margin_top(10); hint_lbl.set_margin_bottom(10)
+                hint_lbl.set_margin_start(8); hint_lbl.set_margin_end(8)
+                hint_lbl.set_markup(
+                    '<span foreground="#ffec27">\U0001f937 Couldn\u2019t figure it out '
+                    'from keywords.</span>\n'
+                    '<span foreground="#50506a" size="small">'
+                    'Try \u201cFetch BBS Tags\u201d above to check Lexaloffle directly, '
+                    'or sort these manually.</span>')
+                hint_row.add(hint_lbl)
+                lb.add(hint_row)
+
             lb.show_all()
             n = len(suggestions_map)
             hdr_lbl.set_markup(
@@ -2748,6 +2948,12 @@ class FavSorterWindow(Gtk.Window):
                 if cat not in merged or len(ents) > len(merged[cat]):
                     merged[cat] = ents
 
+            # Author-collection suggestions — lowest priority, only fills gaps
+            author_sugs = suggest_author_categories(pool, self._categories)
+            for cat, ents in author_sugs.items():
+                if cat not in merged:
+                    merged[cat] = ents
+
             if not merged:
                 empty = Gtk.Label(
                     label="No new category suggestions found.\n"
@@ -2942,6 +3148,165 @@ class FavSorterWindow(Gtk.Window):
             f"Created {created} categor{'y' if created==1 else 'ies'}, "
             f"moved {moved} entr{'y' if moved==1 else 'ies'}")
 
+    def _on_find_duplicates(self, *_):
+        """Scan all loaded entries for exact-base or author+title duplicate
+        groups and show a resolve-per-group dialog (keep-latest/keep-both)."""
+        if not self._filepath:
+            self._set_status("Open a favourites.txt first.", warn=True)
+            return
+        all_entries = list(self._unsorted)
+        for entries in self._sections.values():
+            all_entries.extend(entries)
+        groups = find_duplicate_groups(all_entries)
+        if not groups:
+            self._set_status("No duplicates found.")
+            return
+
+        dlg = Gtk.Dialog(
+            title=f"Duplicates \u2014 {len(groups)} group{'s' if len(groups) != 1 else ''}",
+            transient_for=self, flags=Gtk.DialogFlags.MODAL)
+        dlg.set_default_size(480, 420)
+        dlg.add_button("Close", Gtk.ResponseType.CLOSE)
+        box = dlg.get_content_area()
+        box.set_margin_top(8); box.set_margin_bottom(8)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_size_request(460, 380)
+        rows_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        rows_box.set_margin_start(8); rows_box.set_margin_end(8)
+        scroll.add(rows_box)
+        box.pack_start(scroll, True, True, 0)
+
+        def _resolve(group, keep_both):
+            if keep_both:
+                self._set_status("Kept both \u2014 no changes made.")
+                return
+            keep = group[0]
+            for e in group[1:]:
+                eid = id(e)
+                self._unsorted = [x for x in self._unsorted if id(x) != eid]
+                for cat in list(self._sections.keys()):
+                    self._sections[cat] = [x for x in self._sections[cat] if id(x) != eid]
+            self._mark_dirty()
+            self._refresh_unsorted_view()
+            self._refresh_cat_view()
+            self._rebuild_cat_buttons()
+            self._update_total_count()
+            self._set_status(f"Removed {len(group)-1} duplicate(s) of '{keep['title'][:40]}'")
+
+        for group in groups:
+            entries = group["entries"]
+            row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            title  = entries[0]["title"][:48]
+            author = entries[0]["author"][:30]
+            lbl = Gtk.Label(
+                label=f"{title}  \u2014  {len(entries)} copies (by {author})", xalign=0)
+            lbl.set_ellipsize(Pango.EllipsizeMode.END)
+            lbl.get_style_context().add_class("row-title")
+            row.pack_start(lbl, False, False, 0)
+
+            if group["kind"] == "revision":
+                keep_label = "Keep Newest, Remove Rest"
+            else:
+                keep_label = "Keep First, Remove Rest"
+                note = Gtk.Label(
+                    label="Different BBS IDs \u2014 no revision order, verify before removing",
+                    xalign=0)
+                note.get_style_context().add_class("row-meta")
+                note.set_ellipsize(Pango.EllipsizeMode.END)
+                row.pack_start(note, False, False, 0)
+
+            btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            b_latest = Gtk.Button(label=keep_label)
+            b_latest.get_style_context().add_class("btn-danger")
+            b_latest.set_size_request(0, 40)
+            b_latest.connect("clicked", lambda w, g=entries: _resolve(g, False))
+            b_both = Gtk.Button(label="Keep Both")
+            b_both.get_style_context().add_class("btn-secondary")
+            b_both.set_size_request(0, 40)
+            b_both.connect("clicked", lambda w, g=entries: _resolve(g, True))
+            btn_row.pack_start(b_latest, True, True, 0)
+            btn_row.pack_start(b_both, True, True, 0)
+            row.pack_start(btn_row, False, False, 0)
+            rows_box.pack_start(row, False, False, 0)
+            rows_box.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 0)
+
+        dlg.show_all()
+        dlg.run()
+        dlg.destroy()
+
+    def _on_reload(self, *_):
+        """Re-parse favourites.txt from disk, discarding unsaved changes."""
+        if not self._filepath:
+            self._set_status("No file open.", warn=True)
+            return
+        dlg = Gtk.MessageDialog(
+            transient_for=self, flags=Gtk.DialogFlags.MODAL,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text="Reload file and discard unsaved changes?")
+        dlg.format_secondary_text(
+            "Re-reads favourites.txt from disk, exactly as it was after the "
+            "last Save. Any moves, renames, or new categories made since "
+            "then will be lost.")
+        resp = dlg.run()
+        dlg.destroy()
+        if resp != Gtk.ResponseType.YES:
+            return
+        # Reset to the fixed default baseline before reloading — merging
+        # against live (possibly-dirty) self._categories would let an
+        # unsaved "Add Category" survive a reload, defeating the point.
+        self._categories = list(DEFAULT_CATEGORIES)
+        path = self._filepath
+        self._load_file(path)
+        self._set_status(f"Reloaded {os.path.basename(path)} \u2014 unsaved changes discarded")
+
+    def _on_export_master(self, *_):
+        """Export the master category JSON for transfer to another device."""
+        if not self._filepath:
+            self._set_status("Open a favourites.txt first.", warn=True)
+            return
+        dlg = Gtk.FileChooserDialog(
+            title="Export Master List", transient_for=self,
+            action=Gtk.FileChooserAction.SAVE)
+        dlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                        Gtk.STOCK_SAVE,   Gtk.ResponseType.OK)
+        dlg.set_current_name("favourites-master-export.json")
+        resp = dlg.run()
+        dest = dlg.get_filename()
+        dlg.destroy()
+        if resp != Gtk.ResponseType.OK or not dest:
+            return
+        try:
+            count = export_master_list(self._filepath, dest)
+            self._set_status(f"Exported {count} slug(s) to {os.path.basename(dest)}")
+        except Exception as ex:
+            self._show_error(f"Export failed:\n{ex}")
+
+    def _on_import_master(self, *_):
+        """Import + merge a master category JSON from another device."""
+        if not self._filepath:
+            self._set_status("Open a favourites.txt first.", warn=True)
+            return
+        dlg = Gtk.FileChooserDialog(
+            title="Import Master List", transient_for=self,
+            action=Gtk.FileChooserAction.OPEN)
+        dlg.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                        Gtk.STOCK_OPEN,   Gtk.ResponseType.OK)
+        resp = dlg.run()
+        src = dlg.get_filename()
+        dlg.destroy()
+        if resp != Gtk.ResponseType.OK or not src:
+            return
+        try:
+            count = import_merge_master_list(self._filepath, src)
+            self._set_status(
+                f"Merged {count} slug(s) from imported list. "
+                "Reload the file to apply recovered categories.")
+        except Exception as ex:
+            self._show_error(f"Import failed:\n{ex}")
+
     # ── Config persistence ────────────────────────────────────────────────────
     def _load_config(self):
         try:
@@ -3068,6 +3433,20 @@ class FavSorterWindow(Gtk.Window):
             self._show_error(f"Could not parse file:\n{ex}")
             return False
 
+        # ── Recover categories stripped by PICO-8 (master JSON reconcile) ──────
+        # PICO-8 only ever prepends favourites.txt with no header; a stray
+        # manual edit or a fresh re-export can also drop # category headers.
+        # Anything sitting in Unsorted gets checked against the last-known
+        # category recorded in favourites.txt.master.json.
+        pool_unsorted = list(unsorted) + list(sections.pop("UNSORTED", []))
+        known_cats = [c for c in cat_order if c != "UNSORTED"]
+        for c in self._categories:
+            if c not in known_cats:
+                known_cats.append(c)
+        sections, pool_unsorted, recovered = reconcile_stripped_categories(
+            path, sections, pool_unsorted, known_cats)
+        unsorted = pool_unsorted
+
         # ── Duplicate detection ───────────────────────────────────────────────
         # Collect all slugs across every section + unsorted
         all_entries = list(unsorted)
@@ -3151,9 +3530,10 @@ class FavSorterWindow(Gtk.Window):
 
         total = sum(len(v) for v in self._sections.values()) + len(self._unsorted)
         uns   = len(self._sections.get("UNSORTED", [])) + len(self._unsorted)
+        recovered_note = f"  ·  {recovered} recovered" if recovered else ""
         self._set_status(
             f"Loaded: {os.path.basename(path)}  ·  "
-            f"{uns} unsorted  ·  {total} total")
+            f"{uns} unsorted  ·  {total} total{recovered_note}")
         return False  # GLib.idle_add expects False to not repeat
 
     def _on_save(self, *_):
@@ -3164,6 +3544,11 @@ class FavSorterWindow(Gtk.Window):
             backup = write_favourites(
                 self._filepath, self._categories,
                 self._sections, self._unsorted)
+            # Full master-JSON resync — safety net for moves not already
+            # persisted incrementally (e.g. Auto-Sort's checkbox apply).
+            for cat, entries in self._sections.items():
+                if cat != "UNSORTED" and entries:
+                    set_master_category_for_entries(self._filepath, entries, cat)
             self._update_total_count()
             self._clear_dirty()
             self._set_status(f"Saved ✓  —  backup: {os.path.basename(backup)}")
